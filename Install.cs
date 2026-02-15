@@ -8,19 +8,21 @@ namespace MLInstallerSDK
     {
         private static readonly HttpClient Http = new HttpClient();
 
+        public enum Architecture { x64, x86, linux, mac }
+
         /// <summary>
         /// Downloads the selected version to the target path.
         /// </summary>
-        public static async Task<bool> DownloadVersionAsync(MLVersion version, string targetPath, string? arch = "x64")
+        public static async Task<bool> DownloadVersionAsync(MLVersion version, string targetPath, Architecture arch = Architecture.x64)
         {
             try
             {
                 string? url = arch switch
                 {
-                    "x64" => version.DownloadUrlWin,
-                    "x86" => version.DownloadUrlWinX86,
-                    "linux" => version.DownloadUrlLinux,
-                    "mac" => version.DownloadUrlMacOS,
+                    Architecture.x64 => version.DownloadUrlWin,
+                    Architecture.x86 => version.DownloadUrlWinX86,
+                    Architecture.linux => version.DownloadUrlLinux,
+                    Architecture.mac => version.DownloadUrlMacOS,
                     _ => version.DownloadUrlWin
                 };
 
