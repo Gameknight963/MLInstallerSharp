@@ -29,29 +29,29 @@ namespace MLInstallerSDK
         /// </summary>
         public static async Task<List<MLVersion>> FetchAvailableVersionsAsync()
         {
-            var versions = new List<MLVersion>();
+            List<MLVersion> versions = new List<MLVersion>();
             WriteLog("Starting fetch of available MelonLoader versions...");
 
             // --- CI builds ---
             WriteLog("Fetching CI builds...");
-            var ciResp = await Http.GetAsync(CIWorkflowApi);
+            HttpResponseMessage ciResp = await Http.GetAsync(CIWorkflowApi);
             ciResp.EnsureSuccessStatusCode();
             WriteLog("CI builds response received.");
 
-            var ciJson = await ciResp.Content.ReadAsStringAsync();
-            var runs = JsonNode.Parse(ciJson)?["workflow_runs"]?.AsArray()
+            string ciJson = await ciResp.Content.ReadAsStringAsync();
+            JsonArray runs = JsonNode.Parse(ciJson)?["workflow_runs"]?.AsArray()
                 ?? throw new InvalidOperationException("Invalid CI API response.");
 
             int ciCount = 0;
-            foreach (var run in runs)
+            foreach (JsonNode? run in runs)
             {
-                var runName = run?["name"]?.ToString();
+                string? runName = run?["name"]?.ToString();
                 if (string.IsNullOrWhiteSpace(runName)) continue;
 
-                var verEnd = runName.IndexOf(' ');
+                int verEnd = runName.IndexOf(' ');
                 if (verEnd <= 0) continue;
 
-                if (!SemVersion.TryParse(runName[..verEnd], SemVersionStyles.Any, out var runVersion))
+                if (!SemVersion.TryParse(runName[..verEnd], SemVersionStyles.Any, out SemVersion? runVersion))
                     continue;
 
                 versions.Add(new MLVersion
@@ -68,22 +68,22 @@ namespace MLInstallerSDK
 
             // --- Stable releases ---
             WriteLog("Fetching stable releases...");
-            var stableResp = await Http.GetAsync(StableReleasesApi);
+            HttpResponseMessage stableResp = await Http.GetAsync(StableReleasesApi);
             stableResp.EnsureSuccessStatusCode();
             WriteLog("Stable releases response received.");
 
-            var stableJson = await stableResp.Content.ReadAsStringAsync();
-            var releases = JsonNode.Parse(stableJson)?.AsArray()
+            string stableJson = await stableResp.Content.ReadAsStringAsync();
+            JsonArray releases = JsonNode.Parse(stableJson)?.AsArray()
                 ?? throw new InvalidOperationException("Invalid releases API response.");
 
             int stableCount = 0;
-            foreach (var release in releases)
+            foreach (JsonNode? release in releases)
             {
                 if (!SemVersion.TryParse(release?["tag_name"]?.ToString(),
-                    SemVersionStyles.Any, out var relVersion))
+                    SemVersionStyles.Any, out SemVersion? relVersion))
                     continue;
 
-                var assets = release?["assets"]?.AsArray();
+                JsonArray? assets = release?["assets"]?.AsArray();
                 if (assets == null) continue;
 
                 versions.Add(new MLVersion

@@ -46,17 +46,17 @@ namespace MLInstallerSDK
                 }
 
                 WriteLog($"Starting download from {url} to {targetPath}...");
-                using var resp = await Http.GetAsync(url, HttpCompletionOption.ResponseHeadersRead);
+                using HttpResponseMessage resp = await Http.GetAsync(url, HttpCompletionOption.ResponseHeadersRead);
                 resp.EnsureSuccessStatusCode();
                 WriteLog("Download began");
 
-                var totalBytes = resp.Content.Headers.ContentLength ?? -1L;
-                var downloadedBytes = 0L;
+                long totalBytes = resp.Content.Headers.ContentLength ?? -1L;
+                long downloadedBytes = 0L;
 
-                await using var fs = System.IO.File.OpenWrite(targetPath);
-                await using var stream = await resp.Content.ReadAsStreamAsync();
+                await using FileStream fs = System.IO.File.OpenWrite(targetPath);
+                await using Stream stream = await resp.Content.ReadAsStreamAsync();
 
-                var buffer = new byte[81920];
+                byte[] buffer = new byte[81920];
                 int read;
                 WriteLog("Downloading content!");
                 while ((read = await stream.ReadAsync(buffer)) > 0)
