@@ -67,7 +67,7 @@ namespace MLInstallerSDK
                     {
                         double percent = downloadedBytes * 100.0 / totalBytes;
                         progress?.Report(percent);
-                        WriteLog($"Downloaded {percent:0.00}% ({downloadedBytes}/{totalBytes} bytes)");
+                        // WriteLog($"Downloaded {percent:0.00}% ({downloadedBytes}/{totalBytes} bytes)");
                     }
                 }
 
