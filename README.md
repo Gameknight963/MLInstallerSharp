@@ -29,13 +29,72 @@ using MLInstallerSDK;
 MLVersion version = versions.First();
 
 // Download to a target path
-bool success = await Installer.DownloadVersionAsync(version, @"C:\Temp\MelonLoader.zip", Architecture.WindowsX64);
+bool success = await Installer.DownloadVersionAsync(version, @"C:\Temp\MelonLoader.zip", Architecture.x64);
+// you probably don't want to download there, adjust the path as needed
 
 if (success)
     Console.WriteLine("Download complete!");
 else
     Console.WriteLine("Download failed.");
 ```
+You'll need to extract the zip after the download is complete.
+
+## Logging
+
+You can optionally attach a logger to both Installer and MLManager.
+
+Example
+
+```
+using MLInstallerSDK;
+
+Installer.Log = message => Console.WriteLine(message);
+MLManager.Log = message => Console.WriteLine(message);
+
+```
+
+Now all internal SDK actions will emit messages:
+
+```
+[Installer] Starting download...
+[MLManager] Fetching CI builds...
+```
+
+
+## Progress Reporting
+
+``DownloadVersionAsync`` supports optional progress reporting via ``IProgress<double>``.
+
+Progress is reported as a percentage, from 0-100.
+
+### Example
+
+```
+using MLInstallerSDK;
+
+MLVersion version = versions.First();
+
+Progress<double> progress = new Progress<double>(percent =>
+{
+    Console.WriteLine($"Download progress: {percent:0.0}%");
+});
+
+bool success = await Installer.DownloadVersionAsync(
+    version,
+    @"C:\Temp\MelonLoader.zip",
+    Installer.Architecture.x64,
+    progress
+);
+
+if (success)
+    Console.WriteLine("Download complete!");
+else
+    Console.WriteLine("Download failed.");
+
+```
+
+If you don’t pass a progress object, progress reporting is simply disabled.
+
 ## API
 ``MLManager``
 
@@ -67,12 +126,8 @@ public enum Architecture
 ```
 Architecture  enum added by me. Not sure why the melonloader devs opted for a string.
 
-# Notes
+### Notes
 
  - CI builds are fetched from the alpha-development branch GitHub Actions workflow.
 
  - Stable releases are fetched from the official MelonLoader releases API.
-
-‍
-
-Yes I used a pragma. What are you gonna do about it? It won't even be a problem unless Github's API undergoes major changes (at which point you probably have bigger fish to fry.)

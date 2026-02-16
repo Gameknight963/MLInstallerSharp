@@ -12,6 +12,13 @@ namespace MLInstallerSDK
         private const string StableReleasesApi = "https://api.github.com/repos/LavaGang/MelonLoader/releases";
         private const string CIWorkflowApi = "https://api.github.com/repos/LavaGang/MelonLoader/actions/workflows/5411546/runs?branch=alpha-development&event=push&status=success&per_page=5";
 
+        public static Action<string>? Log { get; set; }
+
+        private static void WriteLog(string message)
+        {
+            Log?.Invoke($"[MLManager] {message}");
+        }
+
         static MLManager()
         {
             Http.DefaultRequestHeaders.Add("User-Agent", "MelonLoader.SDK");
@@ -23,15 +30,19 @@ namespace MLInstallerSDK
         public static async Task<List<MLVersion>> FetchAvailableVersionsAsync()
         {
             var versions = new List<MLVersion>();
+            WriteLog("Starting fetch of available MelonLoader versions...");
 
             // --- CI builds ---
+            WriteLog("Fetching CI builds...");
             var ciResp = await Http.GetAsync(CIWorkflowApi);
             ciResp.EnsureSuccessStatusCode();
+            WriteLog("CI builds response received.");
 
             var ciJson = await ciResp.Content.ReadAsStringAsync();
             var runs = JsonNode.Parse(ciJson)?["workflow_runs"]?.AsArray()
                 ?? throw new InvalidOperationException("Invalid CI API response.");
 
+            int ciCount = 0;
             foreach (var run in runs)
             {
                 var runName = run?["name"]?.ToString();
@@ -42,26 +53,30 @@ namespace MLInstallerSDK
 
                 if (!SemVersion.TryParse(runName[..verEnd], SemVersionStyles.Any, out var runVersion))
                     continue;
-                #pragma warning disable CS8602 // Dereference of a possibly null reference.
+
                 versions.Add(new MLVersion
-                {
+                {   
                     Version = runVersion,
                     DownloadUrlWin = $"https://nightly.link/LavaGang/MelonLoader/actions/runs/{run["id"]}/MelonLoader.Windows.x64.CI.Release.zip",
                     DownloadUrlWinX86 = $"https://nightly.link/LavaGang/MelonLoader/actions/runs/{run["id"]}/MelonLoader.Windows.x86.CI.Release.zip",
                     DownloadUrlLinux = $"https://nightly.link/LavaGang/MelonLoader/actions/runs/{run["id"]}/MelonLoader.Linux.x64.CI.Release.zip",
                     DownloadUrlMacOS = $"https://nightly.link/LavaGang/MelonLoader/actions/runs/{run["id"]}/MelonLoader.macOS.x64.CI.Release.zip"
                 });
-                #pragma warning restore CS8602
+                ciCount++;
             }
+            WriteLog($"CI builds processed: {ciCount}");
 
             // --- Stable releases ---
+            WriteLog("Fetching stable releases...");
             var stableResp = await Http.GetAsync(StableReleasesApi);
             stableResp.EnsureSuccessStatusCode();
+            WriteLog("Stable releases response received.");
 
             var stableJson = await stableResp.Content.ReadAsStringAsync();
             var releases = JsonNode.Parse(stableJson)?.AsArray()
                 ?? throw new InvalidOperationException("Invalid releases API response.");
 
+            int stableCount = 0;
             foreach (var release in releases)
             {
                 if (!SemVersion.TryParse(release?["tag_name"]?.ToString(),
@@ -79,10 +94,12 @@ namespace MLInstallerSDK
                     DownloadUrlLinux = assets.FirstOrDefault(x => x?["name"]?.ToString() == "MelonLoader.Linux.x64.zip")?["browser_download_url"]?.ToString(),
                     DownloadUrlMacOS = assets.FirstOrDefault(x => x?["name"]?.ToString() == "MelonLoader.macOS.x64.zip")?["browser_download_url"]?.ToString()
                 });
+                stableCount++;
             }
+            WriteLog($"Stable releases processed: {stableCount}");
 
+            WriteLog($"Total versions fetched: {versions.Count}");
             return versions;
         }
-
     }
 }

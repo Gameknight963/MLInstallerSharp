@@ -1,6 +1,5 @@
 ﻿using System.Net.Http;
 using System.Threading.Tasks;
-using static System.Net.WebRequestMethods;
 
 namespace MLInstallerSDK
 {
@@ -11,9 +10,23 @@ namespace MLInstallerSDK
         public enum Architecture { x64, x86, linux, mac }
 
         /// <summary>
+        /// Optional global logging for Installer actions
+        /// </summary>
+        public static Action<string>? Log { get; set; }
+
+        private static void WriteLog(string message)
+        {
+            Log?.Invoke($"[Installer] {message}");
+        }
+
+        /// <summary>
         /// Downloads the selected version to the target path.
         /// </summary>
-        public static async Task<bool> DownloadVersionAsync(MLVersion version, string targetPath, Architecture arch = Architecture.x64)
+        public static async Task<bool> DownloadVersionAsync(
+            MLVersion version,
+            string targetPath,
+            Architecture arch,
+            IProgress<double>? progress = null) // percent 0–100
         {
             try
             {
@@ -26,18 +39,55 @@ namespace MLInstallerSDK
                     _ => version.DownloadUrlWin
                 };
 
-                if (url == null) return false;
+                if (url == null)
+                {
+                    WriteLog($"No download URL for architecture {arch}");
+                    return false;
+                }
 
-                using var resp = await Http.GetAsync(url);
+                WriteLog($"Starting download from {url} to {targetPath}...");
+                using var resp = await Http.GetAsync(url, HttpCompletionOption.ResponseHeadersRead);
                 resp.EnsureSuccessStatusCode();
+                WriteLog("Download began");
+
+                var totalBytes = resp.Content.Headers.ContentLength ?? -1L;
+                var downloadedBytes = 0L;
 
                 await using var fs = System.IO.File.OpenWrite(targetPath);
-                await resp.Content.CopyToAsync(fs);
+                await using var stream = await resp.Content.ReadAsStreamAsync();
 
+                var buffer = new byte[81920];
+                int read;
+                WriteLog("Downloading content!");
+                while ((read = await stream.ReadAsync(buffer)) > 0)
+                {
+                    await fs.WriteAsync(buffer.AsMemory(0, read));
+                    downloadedBytes += read;
+                    if (totalBytes > 0)
+                    {
+                        double percent = downloadedBytes * 100.0 / totalBytes;
+                        progress?.Report(percent);
+                        WriteLog($"Downloaded {percent:0.00}% ({downloadedBytes}/{totalBytes} bytes)");
+                    }
+                }
+
+                progress?.Report(100);
+                WriteLog("Download complete!");
                 return true;
             }
-            catch
+            catch (HttpRequestException ex)
             {
+                WriteLog($"Download failed: {ex.Message}");
+                return false;
+            }
+            catch (System.IO.IOException ex)
+            {
+                WriteLog($"File write failed: {ex.Message}");
+                return false;
+            }
+            catch (System.Exception ex)
+            {
+                WriteLog($"Unexpected error: {ex.Message}");
                 return false;
             }
         }
