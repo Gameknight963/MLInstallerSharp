@@ -112,7 +112,7 @@ If you don’t pass a progress object, progress reporting is simply disabled.
 
  - ``bool IsLocalPath``: Indicates if this version is a local zip
 
-##Architecture Enum
+## Architecture Enum
 ``Installer``
 
 ```
