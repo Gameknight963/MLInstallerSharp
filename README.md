@@ -10,7 +10,7 @@ A lightweight C# SDK for fetching and downloading MelonLoader stable releases an
 
 ## Usage
 ### Fetch Available Versions
-```
+```csharp
 using MLInstallerSDK;
 
 List<MLVersion> versions = await MLManager.FetchAvailableVersionsAsync();
@@ -22,7 +22,7 @@ foreach (MLVersion v in versions)
 ```
 
 ### Download a Version
-```
+```csharp
 using MLInstallerSDK;
 
 // Pick a version from the fetched list
@@ -45,7 +45,7 @@ You can optionally attach a logger to both Installer and MLManager.
 
 Example
 
-```
+```csharp
 using MLInstallerSDK;
 
 Installer.Log = message => Console.WriteLine(message);
@@ -69,7 +69,7 @@ Progress is reported as a percentage, from 0-100.
 
 ### Example
 
-```
+```csharp
 using MLInstallerSDK;
 
 MLVersion version = versions.First();
@@ -115,7 +115,7 @@ If you don’t pass a progress object, progress reporting is simply disabled.
 ## Architecture Enum
 ``Installer``
 
-```
+```csharp
 public enum Architecture
 {
     x64,
