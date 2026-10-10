@@ -5,6 +5,7 @@ using Semver;
 
 namespace MLInstallerSharp
 {
+    /// <summary>Fetches available MelonLoader releases and CI builds.</summary>
     public static class MLManager
     {
         private static readonly HttpClient Http = new HttpClient();
@@ -12,6 +13,7 @@ namespace MLInstallerSharp
         private const string StableReleasesApi = "https://api.github.com/repos/LavaGang/MelonLoader/releases";
         private const string CIWorkflowApi = "https://api.github.com/repos/LavaGang/MelonLoader/actions/workflows/5411546/runs?branch=alpha-development&event=push&status=success&per_page=5";
 
+        /// <summary>Optional global logging for version discovery.</summary>
         public static Action<string>? Log { get; set; }
 
         private static void WriteLog(string message)
@@ -34,7 +36,7 @@ namespace MLInstallerSharp
 
             // --- CI builds ---
             WriteLog("Fetching CI builds...");
-            HttpResponseMessage ciResp = await Http.GetAsync(CIWorkflowApi);
+            using HttpResponseMessage ciResp = await Http.GetAsync(CIWorkflowApi);
             ciResp.EnsureSuccessStatusCode();
             WriteLog("CI builds response received.");
 
@@ -45,7 +47,8 @@ namespace MLInstallerSharp
             int ciCount = 0;
             foreach (JsonNode? run in runs)
             {
-                string? runName = run!["name"]?.ToString();
+                if (run == null) continue;
+                string? runName = run["name"]?.ToString();
                 if (string.IsNullOrWhiteSpace(runName)) continue;
 
                 int verEnd = runName.IndexOf(' ');
@@ -68,7 +71,7 @@ namespace MLInstallerSharp
 
             // --- Stable releases ---
             WriteLog("Fetching stable releases...");
-            HttpResponseMessage stableResp = await Http.GetAsync(StableReleasesApi);
+            using HttpResponseMessage stableResp = await Http.GetAsync(StableReleasesApi);
             stableResp.EnsureSuccessStatusCode();
             WriteLog("Stable releases response received.");
 

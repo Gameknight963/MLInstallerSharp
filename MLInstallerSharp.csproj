@@ -21,6 +21,8 @@
 
   <ItemGroup>
     <PackageReference Include="Semver" Version="3.0.0" />
+    <None Update="README.md" Pack="true" PackagePath="/" />
+    <None Update="LICENSE" Pack="true" PackagePath="/" />
   </ItemGroup>
 
 </Project>

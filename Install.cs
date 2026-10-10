@@ -1,13 +1,44 @@
 ﻿namespace MLInstallerSharp
 {
+    /// <summary>Downloads MelonLoader archives to files or streams.</summary>
     public static class Installer
     {
         private static readonly HttpClient Http = new HttpClient();
 
-        public enum Architecture { x64, x86, linux, mac }
+        /// <summary>Supported download platforms.</summary>
+        public enum Architecture
+        {
+            /// <summary>Windows x64.</summary>
+            x64,
+            /// <summary>Windows x86.</summary>
+            x86,
+            /// <summary>Linux x64.</summary>
+            linux,
+            /// <summary>macOS x64.</summary>
+            mac
+        }
+
+        private static string GetDownloadUrl(MLVersion version, Architecture arch)
+        {
+            ArgumentNullException.ThrowIfNull(version);
+            string? url = arch switch
+            {
+                Architecture.x64 => version.DownloadUrlWin,
+                Architecture.x86 => version.DownloadUrlWinX86,
+                Architecture.linux => version.DownloadUrlLinux,
+                Architecture.mac => version.DownloadUrlMacOS,
+                _ => throw new ArgumentOutOfRangeException(nameof(arch), arch, "Unsupported architecture.")
+            };
+            if (string.IsNullOrWhiteSpace(url))
+                throw new ArgumentException($"No download URL for architecture {arch}", nameof(version));
+            if (!Uri.TryCreate(url, UriKind.Absolute, out Uri? uri) ||
+                (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps))
+                throw new ArgumentException("Download URL must be an absolute HTTP or HTTPS URL.", nameof(version));
+            return url;
+        }
 
         /// <summary>
-        /// Downloads the selected version to the target path.
+        /// Downloads the selected version to a writable stream, leaving it open.
         /// </summary>
         public static async Task DownloadVersionAsync(
             MLVersion version,
@@ -20,16 +51,8 @@
             if (!destination.CanWrite)
                 throw new ArgumentException("Destination stream must be writable.", nameof(destination));
 
-            string? url = arch switch
-            {
-                Architecture.x64 => version.DownloadUrlWin,
-                Architecture.x86 => version.DownloadUrlWinX86,
-                Architecture.linux => version.DownloadUrlLinux,
-                Architecture.mac => version.DownloadUrlMacOS,
-                _ => null
-            };
-            if (url == null)
-                throw new ArgumentException($"No download URL for architecture {arch}", nameof(arch));
+            string url = GetDownloadUrl(version, arch);
+            cancellationToken.ThrowIfCancellationRequested();
 
             using HttpResponseMessage resp = await Http.GetAsync(
                 url, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
@@ -64,6 +87,8 @@
             IProgress<double>? progress = null,
             CancellationToken cancellationToken = default)
         {
+            _ = GetDownloadUrl(version, arch);
+            cancellationToken.ThrowIfCancellationRequested();
             await using FileStream fs = new(
                 targetPath,
                 FileMode.Create,
