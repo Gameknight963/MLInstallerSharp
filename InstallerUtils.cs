@@ -5,6 +5,17 @@ using Semver;
 
 namespace MLInstallerSharp
 {
+    /// <summary>Stages of MelonLoader version discovery.</summary>
+    public enum FetchStage
+    {
+        /// <summary>Fetching and processing recent CI builds.</summary>
+        FetchingCIBuilds,
+        /// <summary>Fetching and processing stable releases.</summary>
+        FetchingStableReleases,
+        /// <summary>Version discovery completed successfully.</summary>
+        Completed
+    }
+
     /// <summary>Fetches available MelonLoader releases and CI builds.</summary>
     public static class MLManager
     {
@@ -12,14 +23,6 @@ namespace MLInstallerSharp
 
         private const string StableReleasesApi = "https://api.github.com/repos/LavaGang/MelonLoader/releases";
         private const string CIWorkflowApi = "https://api.github.com/repos/LavaGang/MelonLoader/actions/workflows/5411546/runs?branch=alpha-development&event=push&status=success&per_page=5";
-
-        /// <summary>Optional global logging for version discovery.</summary>
-        public static Action<string>? Log { get; set; }
-
-        private static void WriteLog(string message)
-        {
-            Log?.Invoke($"[MLManager] {message}");
-        }
 
         static MLManager()
         {
@@ -29,27 +32,25 @@ namespace MLInstallerSharp
         /// <summary>
         /// Fetches all available versions (stable + CI) and returns them in a list.
         /// </summary>
+        /// <remarks>The optional progress callback runs inline and propagates any exceptions it throws.</remarks>
         /// <exception cref="HttpRequestException">A GitHub API request fails or returns an unsuccessful status code.</exception>
         /// <exception cref="OperationCanceledException">An HTTP request times out.</exception>
         /// <exception cref="System.Text.Json.JsonException">A GitHub API response contains invalid JSON.</exception>
         /// <exception cref="InvalidOperationException">A GitHub API response is missing the expected data or has an unexpected JSON structure.</exception>
         /// <exception cref="IOException">Reading a response fails.</exception>
-        public static async Task<List<MLVersion>> FetchAvailableVersionsAsync()
+        public static async Task<List<MLVersion>> FetchAvailableVersionsAsync(Action<FetchStage>? progress = null)
         {
             List<MLVersion> versions = new List<MLVersion>();
-            WriteLog("Starting fetch of available MelonLoader versions...");
 
             // --- CI builds ---
-            WriteLog("Fetching CI builds...");
+            progress?.Invoke(FetchStage.FetchingCIBuilds);
             using HttpResponseMessage ciResp = await Http.GetAsync(CIWorkflowApi);
             ciResp.EnsureSuccessStatusCode();
-            WriteLog("CI builds response received.");
 
             string ciJson = await ciResp.Content.ReadAsStringAsync();
             JsonArray runs = JsonNode.Parse(ciJson)?["workflow_runs"]?.AsArray()
                 ?? throw new InvalidOperationException("Invalid CI API response.");
 
-            int ciCount = 0;
             foreach (JsonNode? run in runs)
             {
                 string? runName = run!["name"]?.ToString();
@@ -69,21 +70,17 @@ namespace MLInstallerSharp
                     DownloadUrlLinux = $"https://nightly.link/LavaGang/MelonLoader/actions/runs/{run["id"]}/MelonLoader.Linux.x64.CI.Release.zip",
                     DownloadUrlMacOS = $"https://nightly.link/LavaGang/MelonLoader/actions/runs/{run["id"]}/MelonLoader.macOS.x64.CI.Release.zip"
                 });
-                ciCount++;
             }
-            WriteLog($"CI builds processed: {ciCount}");
 
             // --- Stable releases ---
-            WriteLog("Fetching stable releases...");
+            progress?.Invoke(FetchStage.FetchingStableReleases);
             using HttpResponseMessage stableResp = await Http.GetAsync(StableReleasesApi);
             stableResp.EnsureSuccessStatusCode();
-            WriteLog("Stable releases response received.");
 
             string stableJson = await stableResp.Content.ReadAsStringAsync();
             JsonArray releases = JsonNode.Parse(stableJson)?.AsArray()
                 ?? throw new InvalidOperationException("Invalid releases API response.");
 
-            int stableCount = 0;
             foreach (JsonNode? release in releases)
             {
                 if (!SemVersion.TryParse(release?["tag_name"]?.ToString(),
@@ -101,11 +98,9 @@ namespace MLInstallerSharp
                     DownloadUrlLinux = assets.FirstOrDefault(x => x?["name"]?.ToString() == "MelonLoader.Linux.x64.zip")?["browser_download_url"]?.ToString(),
                     DownloadUrlMacOS = assets.FirstOrDefault(x => x?["name"]?.ToString() == "MelonLoader.macOS.x64.zip")?["browser_download_url"]?.ToString()
                 });
-                stableCount++;
             }
-            WriteLog($"Stable releases processed: {stableCount}");
 
-            WriteLog($"Total versions fetched: {versions.Count}");
+            progress?.Invoke(FetchStage.Completed);
             return versions;
         }
     }

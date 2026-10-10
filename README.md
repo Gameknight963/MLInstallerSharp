@@ -57,53 +57,45 @@ destination.Position = 0;
 ```
 The destination must be writable. Downloads start at its current position and leave the stream open, so you're responsible for disposing it.
 
-## Logging
+### Fetch Progress
 
-You can optionally attach a logger to MLManager.
-
-Example
+``FetchAvailableVersionsAsync`` accepts an optional ``Action<FetchStage>`` callback. Stages are ``FetchingCIBuilds``, ``FetchingStableReleases``, and ``Completed``.
 
 ```csharp
 using MLInstallerSharp;
 
-MLManager.Log = message => Console.WriteLine(message);
+List<MLVersion> versions = await MLManager.FetchAvailableVersionsAsync(
+    progress: stage => Console.WriteLine($"Fetch stage: {stage}")
+);
 ```
 
-Version discovery will emit messages:
+### Download Progress
 
-```
-[MLManager] Fetching CI builds...
-```
+Both ``DownloadVersionAsync`` overloads accept an optional ``Action<DownloadStage, double?>`` callback with two arguments: stage and percentage.
 
-## Progress Reporting
-
-Both ``DownloadVersionAsync`` overloads support optional progress reporting via ``IProgress<double>``.
-
-Progress is reported as a percentage, from 0-100. If the server doesn't provide the content length, only completion is reported.
-
-### Example
+Stages are ``Connecting``, ``Downloading``, and ``Completed``. The percentage is null while connecting or when the server doesn't provide the content length. Successful completion reports 100.
 
 ```csharp
 using MLInstallerSharp;
 
 MLVersion version = versions.First(v => v.DownloadUrlWin != null);
 
-Progress<double> progress = new Progress<double>(percent =>
-{
-    Console.WriteLine($"Download progress: {percent:0.0}%");
-});
-
 await Installer.DownloadVersionAsync(
     version,
     @"C:\Temp\MelonLoader.zip",
     Installer.Architecture.x64,
-    progress
+    progress: (stage, percent) =>
+    {
+        Console.WriteLine(percent.HasValue
+            ? $"{stage}: {percent.Value:0.0}%"
+            : $"{stage}...");
+    }
 );
-
-Console.WriteLine("Download complete!");
 ```
 
-If you don't pass a progress object, progress reporting is simply disabled.
+Callbacks run inline and don't automatically dispatch to a UI thread. If you're updating a UI, dispatch the update yourself. Exceptions thrown by a callback propagate to the caller.
+
+Progress reports normal activity. Failures still throw exceptions for the caller to handle and log; failed operations don't report ``Completed``.
 
 ## Cancellation
 
@@ -135,17 +127,15 @@ catch (OperationCanceledException)
 
 ``MLManager``
 
- - ``Task<List<MLVersion>> FetchAvailableVersionsAsync()``: Fetches stable releases and recent successful CI builds.
-
- - ``Action<string>? Log``: Optional logger for version discovery.
+ - ``Task<List<MLVersion>> FetchAvailableVersionsAsync(Action<FetchStage>? progress = null)``: Fetches stable releases and recent successful CI builds.
 
 ``Installer``
 
  - ``string GetDownloadUrl(MLVersion version, Architecture arch)``: Returns the selected platform's download URL without downloading. Throws if the version is null, the architecture is unsupported, or the URL is missing or isn't an absolute HTTP or HTTPS URL.
 
- - ``Task DownloadVersionAsync(MLVersion version, string targetPath, Architecture arch, IProgress<double>? progress = null, CancellationToken cancellationToken = default)``: Downloads the selected version to a file.
+ - ``Task DownloadVersionAsync(MLVersion version, string targetPath, Architecture arch, Action<DownloadStage, double?>? progress = null, CancellationToken cancellationToken = default)``: Downloads the selected version to a file.
 
- - ``Task DownloadVersionAsync(MLVersion version, Stream destination, Architecture arch, IProgress<double>? progress = null, CancellationToken cancellationToken = default)``: Downloads the selected version to a writable stream.
+ - ``Task DownloadVersionAsync(MLVersion version, Stream destination, Architecture arch, Action<DownloadStage, double?>? progress = null, CancellationToken cancellationToken = default)``: Downloads the selected version to a writable stream.
 
 ``MLVersion``
 

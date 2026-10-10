@@ -1,5 +1,16 @@
 ﻿namespace MLInstallerSharp
 {
+    /// <summary>Stages of a MelonLoader archive download.</summary>
+    public enum DownloadStage
+    {
+        /// <summary>Requesting the archive.</summary>
+        Connecting,
+        /// <summary>Copying the archive to the destination.</summary>
+        Downloading,
+        /// <summary>The archive has been copied successfully.</summary>
+        Completed
+    }
+
     /// <summary>Downloads MelonLoader archives to files or streams.</summary>
     public static class Installer
     {
@@ -45,6 +56,7 @@
         /// <summary>
         /// Downloads the selected version to a writable stream, leaving it open.
         /// </summary>
+        /// <remarks>The optional progress callback receives a stage and percentage (null when unknown), runs inline, and propagates any exceptions it throws.</remarks>
         /// <exception cref="ArgumentNullException">The version or destination is null.</exception>
         /// <exception cref="ArgumentOutOfRangeException">The architecture is unsupported.</exception>
         /// <exception cref="ArgumentException">The destination is not writable, or the selected URL is missing or invalid.</exception>
@@ -56,7 +68,7 @@
             MLVersion version,
             Stream destination,
             Architecture arch,
-            IProgress<double>? progress = null,
+            Action<DownloadStage, double?>? progress = null,
             CancellationToken cancellationToken = default)
         {
             if (destination == null)
@@ -67,6 +79,7 @@
             string url = GetDownloadUrl(version, arch);
             cancellationToken.ThrowIfCancellationRequested();
 
+            progress?.Invoke(DownloadStage.Connecting, null);
             using HttpResponseMessage resp = await Http.GetAsync(
                 url, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
             resp.EnsureSuccessStatusCode();
@@ -77,6 +90,7 @@
             using Stream source = await resp.Content.ReadAsStreamAsync();
             cancellationToken.ThrowIfCancellationRequested();
 
+            progress?.Invoke(DownloadStage.Downloading, totalBytes >= 0 ? 0.0 : null);
             byte[] buffer = new byte[81920];
             int read;
             while ((read = await source.ReadAsync(buffer, 0, buffer.Length, cancellationToken)) > 0)
@@ -84,16 +98,17 @@
                 await destination.WriteAsync(buffer, 0, read, cancellationToken);
                 downloadedBytes += read;
 
-                if (totalBytes > 0)
-                    progress?.Report(downloadedBytes * 100.0 / totalBytes);
+                progress?.Invoke(DownloadStage.Downloading,
+                    totalBytes > 0 ? downloadedBytes * 100.0 / totalBytes : null);
             }
 
-            progress?.Report(100);
+            progress?.Invoke(DownloadStage.Completed, 100);
         }
 
         /// <summary>
         /// Downloads the selected version to the target path.
         /// </summary>
+        /// <remarks>The optional progress callback receives a stage and percentage (null when unknown), runs inline, and propagates any exceptions it throws.</remarks>
         /// <exception cref="ArgumentNullException">The version or target path is null.</exception>
         /// <exception cref="ArgumentOutOfRangeException">The architecture is unsupported.</exception>
         /// <exception cref="ArgumentException">The target path is empty or invalid, or the selected URL is missing or invalid.</exception>
@@ -108,7 +123,7 @@
             MLVersion version,
             string targetPath,
             Architecture arch,
-            IProgress<double>? progress = null,
+            Action<DownloadStage, double?>? progress = null,
             CancellationToken cancellationToken = default)
         {
             _ = GetDownloadUrl(version, arch);
