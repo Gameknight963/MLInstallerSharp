@@ -9,13 +9,17 @@
         /// <summary>
         /// Downloads the selected version to the target path.
         /// </summary>
-        /// <exception cref="ArgumentException">Thrown if no download URL matches target architecture</exception>
         public static async Task DownloadVersionAsync(
             MLVersion version,
-            string targetPath,
+            Stream destination,
             Architecture arch,
-            IProgress<double>? progress = null)
+            IProgress<double>? progress = null,
+            CancellationToken cancellationToken = default)
         {
+            ArgumentNullException.ThrowIfNull(destination);
+            if (!destination.CanWrite)
+                throw new ArgumentException("Destination stream must be writable.", nameof(destination));
+
             string? url = arch switch
             {
                 Architecture.x64 => version.DownloadUrlWin,
@@ -24,36 +28,51 @@
                 Architecture.mac => version.DownloadUrlMacOS,
                 _ => null
             };
-
             if (url == null)
-            {
                 throw new ArgumentException($"No download URL for architecture {arch}", nameof(arch));
-            }
 
-            using HttpResponseMessage resp = await Http.GetAsync(url, HttpCompletionOption.ResponseHeadersRead);
+            using HttpResponseMessage resp = await Http.GetAsync(
+                url, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
             resp.EnsureSuccessStatusCode();
 
             long totalBytes = resp.Content.Headers.ContentLength ?? -1L;
             long downloadedBytes = 0L;
 
-            await using FileStream fs = File.OpenWrite(targetPath);
-            await using Stream stream = await resp.Content.ReadAsStreamAsync();
+            await using Stream source = await resp.Content.ReadAsStreamAsync(cancellationToken);
 
             byte[] buffer = new byte[81920];
             int read;
-            while ((read = await stream.ReadAsync(buffer)) > 0)
+            while ((read = await source.ReadAsync(buffer, cancellationToken)) > 0)
             {
-                await fs.WriteAsync(buffer.AsMemory(0, read));
+                await destination.WriteAsync(buffer.AsMemory(0, read), cancellationToken);
                 downloadedBytes += read;
+
                 if (totalBytes > 0)
-                {
-                    double percent = downloadedBytes * 100.0 / totalBytes;
-                    progress?.Report(percent);
-                }
+                    progress?.Report(downloadedBytes * 100.0 / totalBytes);
             }
 
             progress?.Report(100);
-            return;
+        }
+
+        /// <summary>
+        /// Downloads the selected version to the target path.
+        /// </summary>
+        public static async Task DownloadVersionAsync(
+            MLVersion version,
+            string targetPath,
+            Architecture arch,
+            IProgress<double>? progress = null,
+            CancellationToken cancellationToken = default)
+        {
+            await using FileStream fs = new(
+                targetPath,
+                FileMode.Create,
+                FileAccess.Write,
+                FileShare.None,
+                bufferSize: 81920,
+                useAsync: true);
+
+            await DownloadVersionAsync(version, fs, arch, progress, cancellationToken);
         }
     }
 }
