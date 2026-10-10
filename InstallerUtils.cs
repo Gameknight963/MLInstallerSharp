@@ -1,4 +1,4 @@
-﻿using System.Net.Http;
+using System.Net.Http;
 using System.Text.Json.Nodes;
 using System.Threading.Tasks;
 using Semver;
@@ -30,7 +30,7 @@ namespace MLInstallerSharp
         }
 
         /// <summary>
-        /// Fetches all available versions (stable + CI) and returns them in a list.
+        /// Fetches all stable releases and recent CI builds and returns them in a list.
         /// </summary>
         /// <remarks>The optional progress callback runs inline and propagates any exceptions it throws.</remarks>
         /// <exception cref="HttpRequestException">A GitHub API request fails or returns an unsuccessful status code.</exception>
@@ -74,30 +74,37 @@ namespace MLInstallerSharp
 
             // --- Stable releases ---
             progress?.Invoke(FetchStage.FetchingStableReleases);
-            using HttpResponseMessage stableResp = await Http.GetAsync(StableReleasesApi);
-            stableResp.EnsureSuccessStatusCode();
-
-            string stableJson = await stableResp.Content.ReadAsStringAsync();
-            JsonArray releases = JsonNode.Parse(stableJson)?.AsArray()
-                ?? throw new InvalidOperationException("Invalid releases API response.");
-
-            foreach (JsonNode? release in releases)
+            const int pageSize = 100;
+            for (int page = 1; ; page++)
             {
-                if (!SemVersion.TryParse(release?["tag_name"]?.ToString(),
-                    SemVersionStyles.Any, out SemVersion? relVersion))
-                    continue;
+                using HttpResponseMessage stableResp = await Http.GetAsync($"{StableReleasesApi}?per_page={pageSize}&page={page}");
+                stableResp.EnsureSuccessStatusCode();
 
-                JsonArray? assets = release?["assets"]?.AsArray();
-                if (assets == null) continue;
+                string stableJson = await stableResp.Content.ReadAsStringAsync();
+                JsonArray releases = JsonNode.Parse(stableJson)?.AsArray()
+                    ?? throw new InvalidOperationException("Invalid releases API response.");
 
-                versions.Add(new MLVersion
+                foreach (JsonNode? release in releases)
                 {
-                    Version = relVersion,
-                    DownloadUrlWin = assets.FirstOrDefault(x => x?["name"]?.ToString() == "MelonLoader.x64.zip")?["browser_download_url"]?.ToString(),
-                    DownloadUrlWinX86 = assets.FirstOrDefault(x => x?["name"]?.ToString() == "MelonLoader.x86.zip")?["browser_download_url"]?.ToString(),
-                    DownloadUrlLinux = assets.FirstOrDefault(x => x?["name"]?.ToString() == "MelonLoader.Linux.x64.zip")?["browser_download_url"]?.ToString(),
-                    DownloadUrlMacOS = assets.FirstOrDefault(x => x?["name"]?.ToString() == "MelonLoader.macOS.x64.zip")?["browser_download_url"]?.ToString()
-                });
+                    if (!SemVersion.TryParse(release?["tag_name"]?.ToString(),
+                        SemVersionStyles.Any, out SemVersion? relVersion))
+                        continue;
+
+                    JsonArray? assets = release?["assets"]?.AsArray();
+                    if (assets == null) continue;
+
+                    versions.Add(new MLVersion
+                    {
+                        Version = relVersion,
+                        DownloadUrlWin = assets.FirstOrDefault(x => x?["name"]?.ToString() == "MelonLoader.x64.zip")?["browser_download_url"]?.ToString(),
+                        DownloadUrlWinX86 = assets.FirstOrDefault(x => x?["name"]?.ToString() == "MelonLoader.x86.zip")?["browser_download_url"]?.ToString(),
+                        DownloadUrlLinux = assets.FirstOrDefault(x => x?["name"]?.ToString() == "MelonLoader.Linux.x64.zip")?["browser_download_url"]?.ToString(),
+                        DownloadUrlMacOS = assets.FirstOrDefault(x => x?["name"]?.ToString() == "MelonLoader.macOS.x64.zip")?["browser_download_url"]?.ToString()
+                    });
+                }
+
+                if (releases.Count < pageSize)
+                    break;
             }
 
             progress?.Invoke(FetchStage.Completed);
