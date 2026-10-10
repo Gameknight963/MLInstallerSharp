@@ -3,7 +3,7 @@ using System.Text.Json.Nodes;
 using System.Threading.Tasks;
 using Semver;
 
-namespace MLInstallerSDK
+namespace MLInstallerSharp
 {
     public static class MLManager
     {
@@ -21,7 +21,7 @@ namespace MLInstallerSDK
 
         static MLManager()
         {
-            Http.DefaultRequestHeaders.Add("User-Agent", "MelonLoader.SDK");
+            Http.DefaultRequestHeaders.Add("User-Agent", "MLInstallerSharp");
         }
 
         /// <summary>

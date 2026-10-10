@@ -1,4 +1,4 @@
-# MelonLoader.SDK
+# MLInstallerSharp
 
 A lightweight C# SDK for fetching and downloading MelonLoader stable releases and CI builds. Designed for integration into custom installers or tools, mainly because I'm making one and I needed a program like this
 
@@ -11,7 +11,7 @@ A lightweight C# SDK for fetching and downloading MelonLoader stable releases an
 ## Usage
 ### Fetch Available Versions
 ```csharp
-using MLInstallerSDK;
+using MLInstallerSharp;
 
 List<MLVersion> versions = await MLManager.FetchAvailableVersionsAsync();
 
@@ -23,7 +23,7 @@ foreach (MLVersion v in versions)
 
 ### Download a Version
 ```csharp
-using MLInstallerSDK;
+using MLInstallerSharp;
 
 // Pick a version from the fetched list
 MLVersion version = versions.First();
@@ -46,7 +46,7 @@ You can optionally attach a logger to both Installer and MLManager.
 Example
 
 ```csharp
-using MLInstallerSDK;
+using MLInstallerSharp;
 
 Installer.Log = message => Console.WriteLine(message);
 MLManager.Log = message => Console.WriteLine(message);
@@ -70,7 +70,7 @@ Progress is reported as a percentage, from 0-100.
 ### Example
 
 ```csharp
-using MLInstallerSDK;
+using MLInstallerSharp;
 
 MLVersion version = versions.First();
 

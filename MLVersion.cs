@@ -3,7 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace MLInstallerSDK
+namespace MLInstallerSharp
 {
     public class MLVersion
     {

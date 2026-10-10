@@ -1,0 +1,18 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AssemblyName>MLInstallerSharp</AssemblyName>
+    <RootNamespace>MLInstallerSharp</RootNamespace>
+    <PackageId>MLInstallerSharp</PackageId>
+    <Title>MLInstallerSharp</Title>
+    <Description>A lightweight C# SDK for fetching and downloading MelonLoader stable releases and CI builds.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Semver" Version="3.0.0" />
+  </ItemGroup>
+
+</Project>
