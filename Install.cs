@@ -24,7 +24,8 @@
         /// <exception cref="ArgumentException">The selected URL is missing or invalid.</exception>
         public static string GetDownloadUrl(MLVersion version, Architecture arch)
         {
-            ArgumentNullException.ThrowIfNull(version);
+            if (version == null)
+                throw new ArgumentNullException(nameof(version));
             string? url = arch switch
             {
                 Architecture.x64 => version.DownloadUrlWin,
@@ -33,7 +34,7 @@
                 Architecture.mac => version.DownloadUrlMacOS,
                 _ => throw new ArgumentOutOfRangeException(nameof(arch), arch, "Unsupported architecture.")
             };
-            if (string.IsNullOrWhiteSpace(url))
+            if (url == null || string.IsNullOrWhiteSpace(url))
                 throw new ArgumentException($"No download URL for architecture {arch}", nameof(version));
             if (!Uri.TryCreate(url, UriKind.Absolute, out Uri? uri) ||
                 (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps))
@@ -58,7 +59,8 @@
             IProgress<double>? progress = null,
             CancellationToken cancellationToken = default)
         {
-            ArgumentNullException.ThrowIfNull(destination);
+            if (destination == null)
+                throw new ArgumentNullException(nameof(destination));
             if (!destination.CanWrite)
                 throw new ArgumentException("Destination stream must be writable.", nameof(destination));
 
@@ -72,13 +74,14 @@
             long totalBytes = resp.Content.Headers.ContentLength ?? -1L;
             long downloadedBytes = 0L;
 
-            await using Stream source = await resp.Content.ReadAsStreamAsync(cancellationToken);
+            using Stream source = await resp.Content.ReadAsStreamAsync();
+            cancellationToken.ThrowIfCancellationRequested();
 
             byte[] buffer = new byte[81920];
             int read;
-            while ((read = await source.ReadAsync(buffer, cancellationToken)) > 0)
+            while ((read = await source.ReadAsync(buffer, 0, buffer.Length, cancellationToken)) > 0)
             {
-                await destination.WriteAsync(buffer.AsMemory(0, read), cancellationToken);
+                await destination.WriteAsync(buffer, 0, read, cancellationToken);
                 downloadedBytes += read;
 
                 if (totalBytes > 0)
@@ -110,7 +113,7 @@
         {
             _ = GetDownloadUrl(version, arch);
             cancellationToken.ThrowIfCancellationRequested();
-            await using FileStream fs = new(
+            using FileStream fs = new(
                 targetPath,
                 FileMode.Create,
                 FileAccess.Write,

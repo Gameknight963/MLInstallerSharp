@@ -53,12 +53,12 @@ namespace MLInstallerSharp
             foreach (JsonNode? run in runs)
             {
                 string? runName = run!["name"]?.ToString();
-                if (string.IsNullOrWhiteSpace(runName)) continue;
+                if (runName == null || string.IsNullOrWhiteSpace(runName)) continue;
 
                 int verEnd = runName.IndexOf(' ');
                 if (verEnd <= 0) continue;
 
-                if (!SemVersion.TryParse(runName[..verEnd], SemVersionStyles.Any, out SemVersion? runVersion))
+                if (!SemVersion.TryParse(runName.Substring(0, verEnd), SemVersionStyles.Any, out SemVersion? runVersion))
                     continue;
 
                 versions.Add(new MLVersion

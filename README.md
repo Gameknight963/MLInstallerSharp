@@ -12,7 +12,7 @@ A lightweight C# SDK for fetching and downloading MelonLoader stable releases an
 
 ## Usage
 
-Requires .NET 10.
+Targets .NET Standard 2.0, so it be used with .NET Framework 4.7.2 or later and modern .NET.
 
 ### Fetch Available Versions
 ```csharp
@@ -41,7 +41,7 @@ Console.WriteLine("Download complete!");
 ```
 You'll need to extract the zip after the download is complete. The target directory must already exist, and an existing file at the target path is overwritten.
 
-Downloads return a ``Task`` and throw exceptions if they fail, instead of returning a success flag. A failed or cancelled download can leave a partial file.
+Downloads return a ``Task`` and throw exceptions if they fail (which are annotated in XML). A failed or cancelled download can leave a partial file which you are responsible for cleaning up.
 
 ### Download to a Stream
 ```csharp
@@ -49,7 +49,7 @@ using MLInstallerSharp;
 
 MLVersion version = versions.First(v => v.DownloadUrlWin != null);
 
-await using MemoryStream destination = new MemoryStream();
+using MemoryStream destination = new MemoryStream();
 await Installer.DownloadVersionAsync(version, destination, Installer.Architecture.x64);
 
 destination.Position = 0;
