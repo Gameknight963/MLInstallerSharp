@@ -163,4 +163,4 @@ Architecture enum added by me. Not sure why the melonloader devs opted for a str
 
  - CI builds are fetched from the five most recent successful push runs of the alpha-development branch GitHub Actions workflow.
 
- - Stable releases are fetched from the official MelonLoader releases API. Only the first page is currently fetched.
+ - All stable releases are fetched from the official MelonLoader releases API, in pages of up to 100 releases.
