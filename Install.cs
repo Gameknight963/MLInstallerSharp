@@ -44,6 +44,13 @@
         /// <summary>
         /// Downloads the selected version to a writable stream, leaving it open.
         /// </summary>
+        /// <exception cref="ArgumentNullException">The version or destination is null.</exception>
+        /// <exception cref="ArgumentOutOfRangeException">The architecture is unsupported.</exception>
+        /// <exception cref="ArgumentException">The destination is not writable, or the selected URL is missing or invalid.</exception>
+        /// <exception cref="HttpRequestException">The HTTP request fails or returns an unsuccessful status code.</exception>
+        /// <exception cref="OperationCanceledException">The download is cancelled or the HTTP request times out.</exception>
+        /// <exception cref="IOException">Reading the response or writing to the destination fails.</exception>
+        /// <exception cref="ObjectDisposedException">A stream is disposed while the download is using it.</exception>
         public static async Task DownloadVersionAsync(
             MLVersion version,
             Stream destination,
@@ -84,6 +91,16 @@
         /// <summary>
         /// Downloads the selected version to the target path.
         /// </summary>
+        /// <exception cref="ArgumentNullException">The version or target path is null.</exception>
+        /// <exception cref="ArgumentOutOfRangeException">The architecture is unsupported.</exception>
+        /// <exception cref="ArgumentException">The target path is empty or invalid, or the selected URL is missing or invalid.</exception>
+        /// <exception cref="NotSupportedException">The target path uses an unsupported format.</exception>
+        /// <exception cref="UnauthorizedAccessException">Access to the target file is denied, or the path refers to a directory.</exception>
+        /// <exception cref="DirectoryNotFoundException">The target directory cannot be found.</exception>
+        /// <exception cref="PathTooLongException">The target path exceeds the system's length limit.</exception>
+        /// <exception cref="IOException">Opening or writing the target file, or reading the response, fails.</exception>
+        /// <exception cref="HttpRequestException">The HTTP request fails or returns an unsuccessful status code.</exception>
+        /// <exception cref="OperationCanceledException">The download is cancelled or the HTTP request times out.</exception>
         public static async Task DownloadVersionAsync(
             MLVersion version,
             string targetPath,

@@ -29,6 +29,11 @@ namespace MLInstallerSharp
         /// <summary>
         /// Fetches all available versions (stable + CI) and returns them in a list.
         /// </summary>
+        /// <exception cref="HttpRequestException">A GitHub API request fails or returns an unsuccessful status code.</exception>
+        /// <exception cref="OperationCanceledException">An HTTP request times out.</exception>
+        /// <exception cref="System.Text.Json.JsonException">A GitHub API response contains invalid JSON.</exception>
+        /// <exception cref="InvalidOperationException">A GitHub API response is missing the expected data or has an unexpected JSON structure.</exception>
+        /// <exception cref="IOException">Reading a response fails.</exception>
         public static async Task<List<MLVersion>> FetchAvailableVersionsAsync()
         {
             List<MLVersion> versions = new List<MLVersion>();
