@@ -18,7 +18,11 @@
             mac
         }
 
-        private static string GetDownloadUrl(MLVersion version, Architecture arch)
+        /// <summary>Returns the HTTP or HTTPS download URL for the selected platform.</summary>
+        /// <exception cref="ArgumentNullException">The version is null.</exception>
+        /// <exception cref="ArgumentOutOfRangeException">The architecture is unsupported.</exception>
+        /// <exception cref="ArgumentException">The selected URL is missing or invalid.</exception>
+        public static string GetDownloadUrl(MLVersion version, Architecture arch)
         {
             ArgumentNullException.ThrowIfNull(version);
             string? url = arch switch

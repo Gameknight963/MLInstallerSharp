@@ -47,8 +47,7 @@ namespace MLInstallerSharp
             int ciCount = 0;
             foreach (JsonNode? run in runs)
             {
-                if (run == null) continue;
-                string? runName = run["name"]?.ToString();
+                string? runName = run!["name"]?.ToString();
                 if (string.IsNullOrWhiteSpace(runName)) continue;
 
                 int verEnd = runName.IndexOf(' ');
